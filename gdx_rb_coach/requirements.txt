@@ -1,0 +1,6 @@
+numpy
+matplotlib
+godirect[usb,ble]        # GDX-RB 実機を使う場合
+youtube-transcript-api   # YouTube 字幕取得
+yt-dlp                   # 字幕が無い動画の音声取得
+faster-whisper           # 音声の文字起こし（任意）
