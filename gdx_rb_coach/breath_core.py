@@ -1,17 +1,13 @@
-"""GDX-RB 呼吸コーチング 共通ロジック
+"""GDX-RB 呼吸コーチング: キーフレーズ定義（CUE_RULES）とテキストからのキュー抽出
 
-- キーフレーズ定義（CUE_RULES）とテキストからのキュー抽出
-- 腹部張力（ベルト張力）の正規化・呼吸相推定（PhaseDetector）
-- キューごとの目標と適合判定（evaluate）
+ブラウザ版 gdx_rb_web/CoachCore.js と同じ規則。変更するときは両方を直し、
+node gdx_rb_web/tests/test_coach_core.cjs で一致を確認すること。
 """
 from __future__ import annotations
 
 import json
 import re
-from collections import deque
-from dataclasses import dataclass, asdict, field
-
-import numpy as np
+from dataclasses import dataclass, asdict
 
 # ---------------------------------------------------------------------------
 # キュー定義
@@ -106,138 +102,3 @@ def save_cues(path: str, cues: list[Cue], source: str = "") -> None:
 def load_cues(path: str) -> list[Cue]:
     with open(path, encoding="utf-8") as f:
         return [Cue(**d) for d in json.load(f)["cues"]]
-
-
-class CueTimeline:
-    def __init__(self, cues: list[Cue]):
-        self.cues = cues
-
-    def active(self, t: float) -> list[Cue]:
-        """時刻 t に有効なキュー（チャネルごとに最新の1つ）"""
-        by_ch: dict[str, Cue] = {}
-        for c in self.cues:
-            if c.t <= t < c.end:
-                by_ch[c.channel] = c
-        return list(by_ch.values())
-
-    def upcoming(self, t: float, horizon: float = 10.0) -> list[Cue]:
-        return [c for c in self.cues if t < c.t <= t + horizon]
-
-
-# ---------------------------------------------------------------------------
-# 張力の正規化と呼吸相推定
-# ---------------------------------------------------------------------------
-PHASE_LABEL = {"INHALE": "吸気", "EXHALE": "呼気", "HOLD": "停止", "UNKNOWN": "--"}
-
-
-@dataclass
-class BreathState:
-    force: float = 0.0       # 平滑化後の張力 [N]
-    norm: float = 0.0        # 正規化張力 (安静呼気=0, 安静吸気=1)
-    slope: float = 0.0       # 正規化張力の変化率 [1/s]
-    phase: str = "UNKNOWN"
-    hold_sec: float = 0.0    # 張力変化が止まっている継続時間
-    rate_bpm: float = float("nan")
-
-
-@dataclass
-class PhaseDetector:
-    fs: float = 10.0
-    calib_sec: float = 30.0      # 正規化に使う直近区間
-    slope_win: float = 0.6       # 傾き推定窓
-    slope_th: float = 0.12       # 吸気/呼気とみなす傾き [norm/s]
-    ema_alpha: float = 0.35
-    _buf: deque = field(default_factory=deque)
-    _ema: float | None = None
-    _t_last_move: float = 0.0
-    _inhale_onsets: deque = field(default_factory=lambda: deque(maxlen=6))
-    lo: float = 0.0
-    hi: float = 1.0
-    frozen_calib: bool = False
-
-    def recalibrate(self):
-        self.frozen_calib = False
-
-    def update(self, t: float, force: float) -> BreathState:
-        self._ema = force if self._ema is None else (
-            self.ema_alpha * force + (1 - self.ema_alpha) * self._ema)
-        self._buf.append((t, self._ema))
-        while self._buf and t - self._buf[0][0] > self.calib_sec:
-            self._buf.popleft()
-        arr = np.array(self._buf)
-        if not self.frozen_calib and len(arr) > self.fs * 5:
-            lo, hi = np.percentile(arr[:, 1], [10, 90])
-            if hi - lo > 1e-3:
-                self.lo, self.hi = lo, hi
-            # 1周分以上たまったら基準を固定（コーチング中の「固める」で基準が動かないように）
-            if t - arr[0, 0] >= self.calib_sec * 0.95:
-                self.frozen_calib = True
-        span = max(self.hi - self.lo, 1e-3)
-        norm = (self._ema - self.lo) / span
-
-        st = BreathState(force=self._ema, norm=norm)
-        w = arr[arr[:, 0] >= t - self.slope_win]
-        if len(w) >= 3:
-            st.slope = np.polyfit(w[:, 0], (w[:, 1] - self.lo) / span, 1)[0]
-        prev_phase = getattr(self, "_phase", "UNKNOWN")
-        if st.slope > self.slope_th:
-            st.phase = "INHALE"
-        elif st.slope < -self.slope_th:
-            st.phase = "EXHALE"
-        else:
-            st.phase = prev_phase if t - self._t_last_move < 0.8 else "HOLD"
-        if abs(st.slope) > self.slope_th:
-            self._t_last_move = t
-        st.hold_sec = t - self._t_last_move
-        if st.phase == "INHALE" and prev_phase != "INHALE":
-            self._inhale_onsets.append(t)
-        self._phase = st.phase
-        if len(self._inhale_onsets) >= 3:
-            iv = np.diff(self._inhale_onsets)
-            iv = iv[iv > 1.0]
-            if len(iv):
-                st.rate_bpm = 60.0 / float(np.median(iv))
-        return st
-
-
-# ---------------------------------------------------------------------------
-# 目標と適合判定
-# ---------------------------------------------------------------------------
-HOLD_LIMIT_SEC = 2.0
-REACTION_SEC = 0.8   # キュー提示から判定開始までの猶予
-
-# kind -> 正規化張力の目標帯 (下限, 上限)。None は帯なし
-TARGET_BAND = {
-    "INHALE": (0.6, 1.3),
-    "EXHALE": (-0.3, 0.4),
-    "HOLD":   None,
-    "NO_HOLD": None,
-    "BRACE":  (0.6, 1.6),
-    "RELAX":  (-0.3, 0.35),
-}
-
-
-def evaluate(cue: Cue, t: float, st: BreathState) -> tuple[bool | None, str]:
-    """(適合?, メッセージ)。猶予期間中は None"""
-    if t - cue.t < REACTION_SEC:
-        return None, cue.label
-    k = cue.kind
-    if k == "NO_HOLD":
-        if st.hold_sec > HOLD_LIMIT_SEC:
-            return False, f"息が止まっています（{st.hold_sec:.1f}s）→ 吐き続けて"
-        return True, "呼吸継続 OK"
-    if k == "HOLD":
-        return (st.phase == "HOLD", "停止 OK" if st.phase == "HOLD" else "張力を保持して")
-    if k == "INHALE":
-        ok = st.phase == "INHALE" or st.norm >= TARGET_BAND[k][0]
-        return ok, "吸気 OK" if ok else "お腹を膨らませるように吸って"
-    if k == "EXHALE":
-        ok = st.phase == "EXHALE" or st.norm <= TARGET_BAND[k][1]
-        return ok, "呼気 OK" if ok else "ゆっくり吐いて"
-    if k == "BRACE":
-        ok = st.norm >= TARGET_BAND[k][0]
-        return ok, "腹圧 OK" if ok else "お腹周りをもう少し張って"
-    if k == "RELAX":
-        ok = st.norm <= TARGET_BAND[k][1]
-        return ok, "脱力 OK" if ok else "お腹の力を抜いて"
-    return None, ""
