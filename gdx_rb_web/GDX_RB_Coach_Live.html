@@ -1,0 +1,1158 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>GDX-RB Coach Live v1.2 | 呼吸フィードバック・動画コーチング</title>
+  <style>
+    :root { font-family: -apple-system, BlinkMacSystemFont, "Yu Gothic", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      color: #162b3b; background: #f3f7fa; font-synthesis: none; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background:#153247; color:white; padding: 22px clamp(18px,4vw,50px); }
+    header .eyebrow { text-transform:uppercase; font-size:12px; letter-spacing:1.6px; font-weight:700; color:#9bdbd9; }
+    header h1 { font-size:clamp(22px,2.2vw,30px); font-weight:650; letter-spacing:.1px; margin:5px 0 7px; }
+    header p { margin:0; color:#cddfe5; font-size:13px; line-height:1.6; }
+    main { margin:24px auto 60px; width:min(1190px,calc(100% - 34px)); display:grid; gap:16px; }
+    .panel { background:white; border:1px solid #d9e3eb; border-radius:12px; box-shadow:0 2px 8px rgba(18,60,85,.045); padding:20px; }
+    .topline { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:space-between; margin-bottom:12px; }
+    h2 { margin:0; font-size:17px; font-weight:700; }
+    .status { display:flex; align-items:center; gap:9px; border:1px solid #cfdfe7; padding:7px 11px; border-radius:30px; background:#f4f8fa; color:#345162; font-size:12px; }
+    .status .dot { width:8px; height:8px; border-radius:50%; background:#92a4ad; }
+    .status.running { color:#145845; background:#e6f6ef; border-color:#b7dfcd; }
+    .status.running .dot { background:#189c72; }
+    .status.warn { color:#91520a; background:#fff6e8; border-color:#ecd4ad; }
+    .status.warn .dot { background:#d79736; }
+    .controlgrid { display:grid; grid-template-columns:repeat(4,minmax(160px,1fr)); gap:12px; align-items:end; }
+    label.field { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:700; color:#536b79; }
+    select, button { font:inherit; }
+    select { width:100%; padding:10px 9px; border-radius:7px; border:1px solid #b9cbd6; color:#14354a; font-size:14px; background:#fff; min-height:42px; }
+    button { cursor:pointer; background:#fff; color:#24516b; border:1px solid #b5c9d6; border-radius:7px; font-weight:700; font-size:13px; padding:11px 14px; min-height:42px; }
+    button:hover:not(:disabled) { background:#eff7fb; }
+    button.primary { background:#137c80; border-color:#137c80; color:#fff; }
+    button.primary:hover:not(:disabled) { background:#0f6266; }
+    button:disabled { opacity:.43; cursor:not-allowed; }
+    .buttonbar { display:flex; flex-wrap:wrap; gap:9px; align-items:center; margin-top:16px; }
+    .checkbox { display:flex; align-items:center; gap:6px; font-size:13px; color:#466073; margin-left:auto; cursor:pointer; }
+    .hint { margin:12px 0 0; font-size:12px; line-height:1.65; color:#587182; }
+    .message { display:none; white-space:pre-wrap; border-radius:7px; font-size:13px; line-height:1.55; padding:12px; margin-top:14px; }
+    .message.active { display:block; }
+    .message.error { border:1px solid #ebc2be; background:#fff2f0; color:#8b2723; }
+    .message.info { border:1px solid #c4dfe9; background:#eef8fc; color:#28566c; }
+    .stats { display:grid; grid-template-columns:repeat(4,minmax(110px,1fr)); gap:12px; }
+    .stat { background:#f5f9fb; border:1px solid #e1ebef; border-radius:10px; padding:13px 16px; min-height:92px; }
+    .stat span { display:block; font-size:12px; color:#607684; margin-bottom:7px; }
+    .stat strong { font-size:clamp(21px,2vw,27px); font-variant-numeric:tabular-nums; color:#183e53; font-weight:700; }
+    .stat small { font-size:12px; font-weight:600; color:#6b8190; margin-left:5px; }
+    .charttop { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .charttools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; color:#587182; }
+    .charttools select { min-height:32px; padding:5px; font-size:12px; width:auto; }
+    .chartbox { position:relative; width:100%; height:380px; border:1px solid #dae5ec; border-radius:8px; overflow:hidden; background:#fff; }
+    canvas { width:100%; height:100%; display:block; }
+    .legend { color:#567483; font-size:12px; display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    .linekey { width:22px; height:3px; display:inline-block; background:#137f88; vertical-align:4px; margin-right:5px; border-radius:10px; }
+    .notes { font-size:12px; line-height:1.8; color:#537081; }
+    .notes strong { color:#315467; }
+    a { color:#145e89; }
+    @media (max-width:840px) { .controlgrid { grid-template-columns:repeat(2,minmax(0,1fr)); } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .checkbox { width:100%; margin-left:0; } }
+    @media (max-width:510px) { .controlgrid { grid-template-columns:1fr; } .panel { padding:15px; } .chartbox { height:300px; } }
+
+    .breathing-settings { display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:12px;align-items:end;padding-top:14px;margin-top:14px;border-top:1px solid #e2eaf0; }
+    .phase-card {display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid #cddce6;border-radius:12px;padding:20px 22px;background:#f6f9fb;transition:background .2s,border-color .2s; }
+    .phase-card .phase-name {font-size:clamp(25px,3vw,39px);font-weight:750;line-height:1.24;color:#29465a;}
+    .phase-card .phase-lead {color:#526a79;font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:6px;}
+    .phase-card .phase-desc {font-size:13px;color:#496576;line-height:1.6;margin-top:9px;}
+    .phase-card .phase-metric {text-align:right;font-size:12px;color:#5d7383;}
+    .phase-card .phase-metric strong{display:block;font-size:19px;color:#17394d;margin-top:5px;font-variant-numeric:tabular-nums;}
+    .phase-card.inhale{border-color:#7eb5d4;background:#eaf6fc;}
+    .phase-card.inhale .phase-name{color:#15618c;}
+    .phase-card.exhale{border-color:#90c6a7;background:#eefaf1;}
+    .phase-card.exhale .phase-name{color:#206548;}
+    .phase-card.hold{border-color:#e9ba82;background:#fff4e6;}
+    .phase-card.hold .phase-name{color:#905a14;}
+    .checkbox.inline {margin-left:0;padding:6px 0;}
+    .phase-hint {font-size:12px;color:#627a8b;line-height:1.75;margin:12px 0 0;}
+    @media (max-width:840px) { .breathing-settings{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (max-width:510px) { .breathing-settings{grid-template-columns:1fr;} .phase-card .phase-metric{text-align:left;} }
+
+    .coach-grid {display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,1.4fr);gap:12px;align-items:end;}
+    .coach-grid input[type=url],.coach-grid input[type=file] {width:100%;padding:9px;border-radius:7px;border:1px solid #b9cbd6;color:#14354a;font:inherit;font-size:14px;background:#fff;min-height:42px;}
+    .coach-grid .inline {display:flex;gap:8px;}
+    .coach-grid .inline button {white-space:nowrap;}
+    .yt-wrap {margin-top:14px;aspect-ratio:16/9;max-width:640px;border-radius:8px;overflow:hidden;background:#0b1a24;}
+    .yt-wrap iframe {width:100%;height:100%;border:0;display:block;}
+    .coach-card {display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid #cddce6;border-radius:12px;padding:18px 22px;background:#f6f9fb;margin-top:14px;transition:background .2s,border-color .2s;}
+    .coach-card.ok {border-color:#90c6a7;background:#eefaf1;}
+    .coach-card.ng {border-color:#e2a49c;background:#fff1ef;}
+    .coach-cue {font-size:clamp(25px,3vw,39px);font-weight:750;line-height:1.24;color:#29465a;}
+    .coach-msg {font-size:15px;color:#496576;line-height:1.6;margin-top:8px;font-weight:600;}
+    .coach-card.ok .coach-msg {color:#206548;}
+    .coach-card.ng .coach-msg {color:#a1302a;}
+    .gauge {width:min(320px,100%);font-size:12px;color:#5d7383;}
+    .gauge-track {position:relative;height:26px;margin:8px 0 4px;border-radius:6px;background:#e8eff3;overflow:hidden;}
+    .gauge-band {position:absolute;top:0;bottom:0;background:rgba(60,154,106,.28);border-left:2px solid #3c9a6a;border-right:2px solid #3c9a6a;}
+    .gauge-marker {position:absolute;top:2px;bottom:2px;width:6px;margin-left:-3px;border-radius:3px;background:#17394d;}
+    .gauge-ticks {display:flex;justify-content:space-between;font-size:11px;color:#7b8f9c;}
+    .gauge strong {font-size:19px;color:#17394d;font-variant-numeric:tabular-nums;}
+    .coach-timeline {width:100%;height:110px;display:block;margin-top:14px;border:1px solid #dae5ec;border-radius:8px;}
+    .coach-table {border-collapse:collapse;font-size:12px;margin-top:10px;width:100%;}
+    .coach-table th,.coach-table td {border-bottom:1px solid #e5edf2;padding:5px 8px;text-align:left;}
+    .coach-table td.num {text-align:right;font-variant-numeric:tabular-nums;}
+    details.coach-details {margin-top:12px;font-size:13px;color:#466073;}
+    @media (max-width:840px) { .coach-grid{grid-template-columns:1fr;} }
+  </style>
+  <!-- Official Vernier Go Direct JavaScript library. Internet connection required. -->
+  <script async src="https://unpkg.com/@vernier/godirect@1.8.3/dist/godirect.min.umd.js" id="vernierLibrary"></script>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">VERNIER · GO DIRECT RESPIRATION BELT</div>
+    <h1>GDX-RB Force Live Logger <span style="font-size:.55em;opacity:.8">v1.2 coaching</span></h1>
+    <p>腹部ベルト張力（Force, N）のリアルタイム表示・呼吸状態の推定・動画の指示に合わせたコーチング・CSV保存 | Windows 11 / macOS · Google Chrome</p>
+  </header>
+  <main>
+    <section class="panel" aria-label="接続と測定の設定">
+      <div class="topline">
+        <h2>測定コントロール</h2>
+        <div id="status" class="status"><span class="dot"></span><span id="statusText">未接続</span></div>
+      </div>
+      <div class="controlgrid">
+        <label class="field" for="connection">接続方式
+          <select id="connection"><option value="usb">USB（推奨）</option><option value="ble">Bluetooth LE</option></select>
+        </label>
+        <label class="field" for="sampling">要求サンプリング周波数
+          <select id="sampling"><option value="250">4 Hz（250 ms）</option><option value="100" selected>10 Hz（100 ms）</option><option value="50">20 Hz（50 ms）</option><option value="33">約30 Hz（33 ms）</option></select>
+        </label>
+        <label class="field" for="viewWindow">横軸の表示範囲
+          <select id="viewWindow"><option value="30">直近30秒</option><option value="60" selected>直近60秒</option><option value="120">直近120秒</option><option value="300">直近300秒</option></select>
+        </label>
+        <label class="field" for="yAxis">縦軸（張力）
+          <select id="yAxis"><option value="fixed" selected>固定：0～50 N</option><option value="auto">自動調整</option></select>
+        </label>
+      </div>
+      <div class="breathing-settings" aria-label="呼吸フィードバック設定">
+        <label class="field" for="polarity">吸気時の張力方向
+          <select id="polarity"><option value="increase" selected>吸気で増加（Vernier標準）</option><option value="decrease">吸気で減少（反転）</option></select>
+        </label>
+        <label class="field" for="sensitivity">呼吸判定の感度
+          <select id="sensitivity"><option value="sensitive">高（緩やかな呼吸向け）</option><option value="normal" selected>標準</option><option value="conservative">低（体動・ノイズが多い場合）</option></select>
+        </label>
+        <label class="field" for="holdSeconds">張力静止の判定時間
+          <select id="holdSeconds"><option value="3" selected>3秒</option><option value="5">5秒</option><option value="8">8秒</option></select>
+        </label>
+      </div>
+      <div class="buttonbar">
+        <button id="connectBtn" class="primary">GDX-RBに接続して計測</button>
+        <button id="demoBtn">デモ計測</button>
+        <button id="stopBtn" disabled>計測停止・CSV保存</button>
+        <button id="resumeBtn" class="primary" disabled>再計測（接続維持）</button>
+        <button id="disconnectBtn" disabled>接続解除</button>
+        <button id="csvBtn" disabled>CSVを保存</button>
+        <button id="clearBtn" disabled>グラフをクリア</button>
+        <label class="checkbox"><input type="checkbox" id="autoSave" checked>停止時にCSVを自動ダウンロード</label>
+      </div>
+      <div id="message" class="message" role="alert" aria-live="polite"></div>
+      <p class="hint">「計測停止」は <b>センサを切断しません</b>。次の「再計測」でデバイス選択なしに新しい測定を開始します。接続を終了する場合だけ「接続解除」を押してください。Force（チャンネル1）を取得します。</p>
+    </section>
+
+    <section class="stats" aria-label="リアルタイム測定値">
+      <div class="stat"><span>最新の張力</span><strong id="forceValue">—</strong><small>N</small></div>
+      <div class="stat"><span>受信経過時間</span><strong id="elapsedValue">—</strong><small>秒</small></div>
+      <div class="stat"><span>取得サンプル数</span><strong id="countValue">0</strong><small>点</small></div>
+      <div class="stat"><span>観測受信レート（直近30秒）</span><strong id="observedRate">—</strong><small>Hz</small></div>
+    </section>
+
+    <section class="panel" aria-label="呼吸状態フィードバック">
+      <div class="topline"><h2>呼吸状態フィードバック（張力変化からの推定）</h2><label class="checkbox inline"><input type="checkbox" id="voiceFeedback">状態変化を音声で通知（任意）</label></div>
+      <div class="phase-card idle" id="phaseCard" role="status" aria-live="polite">
+        <div><div class="phase-lead">現在の呼吸状態（推定）</div><div class="phase-name" id="breathState">待機中</div><div class="phase-desc" id="breathExplanation">計測開始を待っています</div></div>
+        <div class="phase-metric">張力の増減速度（設定方向）<strong id="phaseSlope">— N/s</strong></div>
+      </div>
+      <p class="phase-hint">Vernier標準の装着では吸気時に張力が増え、呼気時に減ります。標準と逆に表示される場合は「吸気時の張力方向」を切り替えてください。「呼吸停止の可能性」は <b>張力変化が小さい状態</b> の検出であり、無呼吸・換気停止を証明しません。体動、ベルトの緩み、浅い呼吸の影響を受けます。</p>
+    </section>
+
+    <section class="panel" aria-label="動画コーチング">
+      <div class="topline"><h2>動画コーチング（指導音声のキーフレーズに連動）</h2><div id="coachClock" class="status"><span class="dot"></span><span id="coachClockText">キュー未読込</span></div></div>
+      <div class="coach-grid">
+        <label class="field" for="cueFile">キュー（cue_extractor.py の JSON ／ 字幕 SRT・VTT）
+          <input type="file" id="cueFile" accept=".json,.srt,.vtt,.txt">
+        </label>
+        <label class="field" for="ytUrl">YouTube URL（任意：再生位置に自動同期）
+          <span class="inline"><input type="url" id="ytUrl" placeholder="https://www.youtube.com/watch?v=..."><button id="ytLoadBtn">動画を読込</button></span>
+        </label>
+      </div>
+      <div class="buttonbar">
+        <button id="coachStartBtn" class="primary" disabled>コーチング開始</button>
+        <button id="coachBackBtn">−0.5 s</button>
+        <button id="coachFwdBtn">＋0.5 s</button>
+        <button id="coachRewindBtn">先頭に戻す</button>
+        <button id="baselineBtn">張力の基準を取得（直近20秒）</button>
+        <button id="coachCsvBtn" disabled>コーチング結果CSV</button>
+      </div>
+      <div id="coachInfo" class="message" role="status" aria-live="polite"></div>
+      <div id="ytPlayerWrap" class="yt-wrap" hidden><div id="ytPlayer"></div></div>
+      <div class="coach-card idle" id="coachCard" role="status" aria-live="polite">
+        <div><div class="phase-lead">動画の指示</div><div class="coach-cue" id="coachCue">—</div><div class="coach-msg" id="coachMsg"></div></div>
+        <div class="gauge">腹部張力（安静呼気＝0、安静吸気＝1）<strong id="gaugeText" style="float:right">基準未取得</strong>
+          <div class="gauge-track"><div class="gauge-band" id="gaugeBand" style="display:none"></div><div class="gauge-marker" id="gaugeMarker" style="display:none"></div></div>
+          <div class="gauge-ticks"><span>−0.4</span><span>0</span><span>0.6</span><span>1.0</span><span>1.6</span></div>
+        </div>
+      </div>
+      <canvas id="coachTimeline" class="coach-timeline" role="img" aria-label="キューのタイムライン（過去5秒〜先15秒）"></canvas>
+      <details class="coach-details"><summary>キュー一覧と適合率</summary><table class="coach-table" id="coachTable"></table></details>
+      <p class="phase-hint">先に10秒以上 <b>安静呼吸</b> を計測してから開始すると、その区間を張力の基準（0〜1）にします。緑の帯が指示に対する目標範囲です。「息を止めない」は上の呼吸状態が「呼吸停止の可能性」になったときに注意を出します（判定時間の設定に従います）。HTMLを直接開いた場合はYouTubeの埋め込みが再生できないことがあります。そのときは別タブで動画を再生し、再生と同時に「コーチング開始」を押してください（±0.5 sでずれを補正できます）。</p>
+    </section>
+
+    <section class="panel" aria-label="リアルタイムグラフ">
+      <div class="charttop"><h2>腹部ベルト張力 ― 時間変化</h2><span style="font-size:12px;color:#617a8a">データはPCで受信した時点で更新</span></div>
+      <div class="chartbox"><canvas id="chart" role="img" aria-label="張力 Force（N）対PC受信経過時間のグラフ"></canvas></div>
+      <div class="legend"><span><span class="linekey"></span>Force（N）</span><span>横軸：PC受信経過時間（秒）</span><span>縦軸：張力（N）</span></div>
+    </section>
+
+    <section class="panel notes">
+      <strong>研究データ上の注意：</strong>Forceは直接受信した未加工の張力（N）です。PC受信時刻はセンサ内部の測定時刻ではありません。要求周波数は実効周波数を保証せず、BLEやブラウザの負荷による欠損があり得ます。<br>
+      <strong>呼吸の推定：</strong>張力を平滑化して約1秒間の増減速度を求めます。「吸気・呼気」はベルト張力の方向に基づく推定、「呼吸停止の可能性」は設定秒数だけ張力変化が小さい場合の候補表示です。<b>呼吸停止の確定診断ではありません。</b><br>
+      <strong>動画コーチング：</strong>指示の判定は上記の呼吸状態の推定と、安静呼吸を基準にした張力の相対値に基づく目安です。CSVには動画時刻、有効な指示、判定（1=適合、0=不適合、空欄=判定なし）を追加します。<br>
+      <strong>保存形式：</strong>CSVには原張力、PC受信時間、要求周期の名目時間に加え、平滑化後の張力、増減速度、推定呼吸状態、判定設定が入ります。自動保存は「停止」を押したときだけです。ブラウザを閉じる前に必ず保存してください。<br>
+      <strong>センサ仕様：</strong>Force 0～50 N、分解能0.01 N、応答時間50 ms。臨床診断や生命維持用途には使用しないでください。<br>
+      公式資料：<a href="https://www.vernier.com/manuals/GDX-RB" target="_blank" rel="noopener noreferrer">GDX-RB User Manual</a> / <a href="https://github.com/VernierST/godirect-examples" target="_blank" rel="noopener noreferrer">Go Direct JavaScript examples</a>
+    </section>
+  </main>
+  <script id="classifier-core">
+/*
+ * GDX-RB: force-derivative phase estimator.
+ * These outputs are heuristic indicators of belt motion, NOT direct airflow
+ * measurements, and HOLD_CANDIDATE is not a clinical apnea diagnosis.
+ * No external dependencies. Embedded verbatim inside GDX_RB_Force_Live.html.
+ */
+(function (root) {
+  'use strict';
+  const SLOPE_THRESHOLDS = Object.freeze({sensitive: 0.09, normal: 0.20, conservative: 0.40}); // N/s
+  class BreathClassifier {
+    constructor() { this.reset(); }
+    reset() {
+      this.history = [];
+      this.smoothed = null;
+      this.lastT = null;
+      this.lastMotionT = null;
+      this.candidate = null;
+      this.candidateSinceT = null;
+      this.state = 'WARMUP';
+    }
+    process(t, forceN, settings = {}) {
+      if (!Number.isFinite(t) || !Number.isFinite(forceN)) return null;
+      if (this.lastT !== null && (t <= this.lastT || t - this.lastT > 2.5)) this.reset();
+      const holdS = Math.min(12, Math.max(3, Number(settings.holdSeconds) || 3));
+      const sensitivity = settings.sensitivity in SLOPE_THRESHOLDS ? settings.sensitivity : 'normal';
+      const threshold = SLOPE_THRESHOLDS[sensitivity];
+      const polarity = settings.polarity === 'decrease' ? -1 : 1;
+      const dt = this.lastT === null ? 0 : t - this.lastT;
+      const alpha = this.lastT === null ? 1 : 1 - Math.exp(-dt / 0.30);
+      this.smoothed = this.smoothed === null ? forceN : this.smoothed + alpha * (forceN - this.smoothed);
+      this.lastT = t;
+      this.history.push({t, f: this.smoothed});
+      while (this.history.length && this.history[0].t < t - Math.max(holdS + 2, 9)) this.history.shift();
+      const firstT = this.history[0].t;
+      const window = this.history.filter(p => p.t >= t - 1.0);
+      let slope = 0;
+      if (window.length >= 3 && window[window.length - 1].t - window[0].t >= 0.65) {
+        const meanT = window.reduce((s,p)=>s+p.t, 0)/window.length;
+        const meanF = window.reduce((s,p)=>s+p.f, 0)/window.length;
+        let cov = 0, variance = 0;
+        for (const p of window) { cov += (p.t-meanT)*(p.f-meanF); variance += (p.t-meanT)**2; }
+        slope = variance > 0 ? cov/variance : 0;
+      } else {
+        this.state = 'WARMUP';
+        return {code:this.state, smooth:this.smoothed, slope:null, threshold};
+      }
+      const signedSlope = slope*polarity;
+      const direction = signedSlope >= threshold ? 'INHALE' : signedSlope <= -threshold ? 'EXHALE' : 'QUIET';
+      if (direction !== 'QUIET') {
+        this.lastMotionT = t;
+        if (this.candidate !== direction) { this.candidate = direction; this.candidateSinceT = t; }
+        if (t - this.candidateSinceT >= 0.23) this.state = direction;
+        else this.state = 'TRANSITION';
+      } else {
+        this.candidate = null;
+        this.candidateSinceT = null;
+        this.state = 'TRANSITION';
+        const inactiveS = t - (this.lastMotionT === null ? firstT : this.lastMotionT);
+        if (inactiveS >= holdS) {
+          const tail = this.history.filter(p=>p.t >= t - holdS);
+          const amplitude = Math.max(...tail.map(p=>p.f)) - Math.min(...tail.map(p=>p.f));
+          // Static tension is compatible with breath holding, a pause, or insufficient sensor motion.
+          // This intentionally avoids claiming clinically verified apnea.
+          if (tail.length >= 3 && amplitude <= Math.max(0.20, threshold * holdS * 0.85)) {
+            this.state = 'HOLD_CANDIDATE';
+          }
+        }
+      }
+      return {code:this.state, smooth:this.smoothed, slope:signedSlope, threshold};
+    }
+  }
+  root.BreathClassifier = BreathClassifier;
+  root.GDXRB_SLOPE_THRESHOLDS = SLOPE_THRESHOLDS;
+  if (typeof module !== 'undefined' && module.exports) module.exports = {BreathClassifier, SLOPE_THRESHOLDS};
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script id="app-main">
+'use strict';
+const el = id => document.getElementById(id);
+const chart = el('chart');
+const ctx = chart.getContext('2d');
+const app = {
+  device:null, sensor:null, deviceStreaming:false, transport:null,
+  rows:[], running:false, busy:false, demoTimer:null,
+  deviceName:'', sessionMode:null, periodMs:100, startPerfMs:0, lastSamplePerfMs:null,
+  renderRequested:false, sessionName:'', exportedRows:0,
+  trialId:0, intentionalClose:false,
+  classifier:new BreathClassifier(), lastPhase:'NONE', lastSpeechMs:0,
+  disconnectedUnexpectedly:false
+};
+const PHASES = {
+  NONE:['待機中','計測開始を待っています','idle'],
+  PAUSED:['計測停止中','BLE/USB接続は維持されています。再計測できます。','idle'],
+  WARMUP:['判定準備中','張力の変化を約1秒間観測しています','idle'],
+  INHALE:['吸っています（推定）','張力が増加しています','inhale'],
+  EXHALE:['吐いています（推定）','張力が減少しています','exhale'],
+  TRANSITION:['切替・静止中','短い平坦部分は呼吸停止と判定しません','idle'],
+  HOLD_CANDIDATE:['呼吸停止の可能性','張力の変化が一定時間小さい状態です。息止めの確定ではありません','hold'],
+  NO_SIGNAL:['信号待ち','受信が途絶えています。呼吸停止と判定できません','hold']
+};
+function status(text, state='') {
+  el('statusText').textContent = text;
+  el('status').className = 'status'+(state?' '+state:'');
+}
+function message(text, severity='info') {
+  const e=el('message');
+  e.textContent=text||'';
+  e.className=text?'message active '+severity:'message';
+}
+function updateButtons() {
+  const locked=app.running||app.busy;
+  const connected=!!app.device;
+  const demoReady=app.transport==='DEMO' && !connected;
+  el('connectBtn').disabled=locked||connected;
+  el('demoBtn').disabled=locked||connected;
+  el('resumeBtn').disabled=locked||!(connected||demoReady);
+  el('stopBtn').disabled=!app.running||app.busy;
+  el('disconnectBtn').disabled=locked||!(connected||demoReady);
+  el('csvBtn').disabled=app.rows.length===0;
+  el('clearBtn').disabled=locked||!app.rows.length;
+  el('connection').disabled=locked||connected;
+  el('sampling').disabled=locked||connected;
+  el('resumeBtn').textContent=demoReady?'デモを再計測':'再計測（接続維持）';
+  el('disconnectBtn').textContent=demoReady?'デモを終了':'接続解除';
+}
+function fmt2(v) {return Number.isFinite(v)?v.toFixed(2):'—';}
+function localTimestamp() {
+  const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function settings() {
+  return {polarity:el('polarity').value, sensitivity:el('sensitivity').value,
+          holdSeconds:Number(el('holdSeconds').value)};
+}
+function updatePhase(code, details=null) {
+  const [label, description, kind]=PHASES[code]||PHASES.NONE;
+  el('breathState').textContent=label;
+  el('breathExplanation').textContent=description;
+  el('phaseCard').className='phase-card '+kind;
+  el('phaseSlope').textContent=details&&Number.isFinite(details.slope)?
+    `${details.slope>=0?'+':''}${details.slope.toFixed(2)} N/s`:'— N/s';
+  if (code!==app.lastPhase) {
+    app.lastPhase=code;
+    if (app.running && el('voiceFeedback').checked &&
+      ['INHALE','EXHALE','HOLD_CANDIDATE'].includes(code)) speakPhase(code);
+  }
+}
+function speakPhase(code) {
+  if (!('speechSynthesis' in window)||!('SpeechSynthesisUtterance' in window)) return;
+  const now=performance.now();
+  if (now-app.lastSpeechMs<1150) return;
+  app.lastSpeechMs=now;
+  const script=code==='INHALE'?'吸っています':code==='EXHALE'?'吐いています':'張力の変化が小さい状態です';
+  try {
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(script);
+    u.lang='ja-JP';u.rate=1.06;u.volume=0.75;
+    window.speechSynthesis.speak(u);
+  } catch (_) {} // Speech is optional; measurement remains active on unsupported systems.
+}
+function prepareNewSession(mode, name) {
+  app.trialId++;
+  app.rows=[];
+  app.transport=mode;
+  app.sessionMode=mode;
+  app.deviceName=name;
+  app.periodMs=Number(el('sampling').value);
+  app.startPerfMs=performance.now();
+  app.lastSamplePerfMs=null;
+  app.classifier.reset();
+  if(window.GDXCoach)GDXCoach.onNewTrial(); // v1.2 coaching
+  app.lastPhase='NONE';app.lastSpeechMs=0;
+  app.sessionName=`GDX_RB_Force_${mode}_${localTimestamp()}_trial${String(app.trialId).padStart(2,'0')}`;
+  app.exportedRows=0;
+  app.running=true;
+  el('forceValue').textContent='—';el('elapsedValue').textContent='—';
+  el('countValue').textContent='0';el('observedRate').textContent='—';
+  updatePhase('WARMUP');
+  updateButtons();scheduleRender();
+}
+function checkPriorData() {
+  if (app.rows.length>app.exportedRows) {
+    return confirm('未保存の測定データがあります。新しい計測を始めると表示中のデータがクリアされます。続行しますか？');
+  }
+  return true;
+}
+function observedHz() {
+  const a=app.rows;if(a.length<2)return null;
+  const last=a[a.length-1].pc_elapsed_s;
+  let first=a.length-1;
+  while(first>0&&a[first-1].pc_elapsed_s>=last-30)first--;
+  if(a.length-first<2)return null;
+  const dt=last-a[first].pc_elapsed_s;
+  return dt>0?(a.length-1-first)/dt:null;
+}
+function addMeasurement(value, timestampMs=performance.now()) {
+  if (!app.running) return;
+  const f=Number(value);
+  if(!Number.isFinite(f))return;
+  app.lastSamplePerfMs=timestampMs;
+  const idx=app.rows.length;
+  const t=(timestampMs-app.startPerfMs)/1000;
+  const s=settings();
+  const result=app.classifier.process(t,f,s);
+  if(!result)return;
+  const r={
+    index:idx, utc_received:new Date().toISOString(), pc_elapsed_s:t,
+    nominal_elapsed_s:idx*app.periodMs/1000, force_N:f,
+    smooth_N:result.smooth, slope_N_per_s:result.slope,
+    breath_state:result.code, inhale_when_force:s.polarity,
+    sensitivity:s.sensitivity, hold_threshold_s:s.holdSeconds
+  };
+  if(window.GDXCoach)GDXCoach.onSample(r,result); // v1.2 coaching
+  app.rows.push(r);
+  el('forceValue').textContent=fmt2(f);
+  el('elapsedValue').textContent=fmt2(t);
+  el('countValue').textContent=String(app.rows.length);
+  if(idx%10===0||idx<3) {
+    const hz=observedHz();el('observedRate').textContent=hz===null?'—':hz.toFixed(1);
+  }
+  updatePhase(result.code,result);
+  if(idx===0||idx%10===0)updateButtons();
+  scheduleRender();
+}
+function scheduleRender() {
+  if(app.renderRequested)return;
+  app.renderRequested=true;
+  requestAnimationFrame(()=>{app.renderRequested=false;renderChart();});
+}
+function renderChart() {
+  const rect=chart.getBoundingClientRect();
+  const w=Math.max(200,rect.width),h=Math.max(190,rect.height);
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  if(chart.width!==Math.round(w*dpr)||chart.height!==Math.round(h*dpr)) {
+    chart.width=Math.round(w*dpr);chart.height=Math.round(h*dpr);
+  }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  const margin={left:62,right:21,top:23,bottom:52};
+  const plotW=w-margin.left-margin.right,plotH=h-margin.top-margin.bottom;
+  const windowS=Number(el('viewWindow').value);
+  const lastT=app.rows.length?app.rows[app.rows.length-1].pc_elapsed_s:0;
+  const xMin=Math.max(0,lastT-windowS),xMax=xMin+windowS;
+  let yMin=0,yMax=50;
+  const visible=app.rows.filter(p=>p.pc_elapsed_s>=xMin&&p.pc_elapsed_s<=xMax);
+  if(el('yAxis').value==='auto'&&visible.length) {
+    let mi=Infinity,ma=-Infinity;
+    for(const p of visible){mi=Math.min(mi,p.force_N);ma=Math.max(ma,p.force_N);}
+    const span=Math.max(.5,ma-mi);
+    yMin=Math.max(0,mi-.2*span);yMax=ma+.2*span;
+    if(yMax-yMin<1)yMax=yMin+1;
+  }
+  const xp=x=>margin.left+(x-xMin)/(xMax-xMin)*plotW;
+  const yp=y=>margin.top+(yMax-y)/(yMax-yMin)*plotH;
+  ctx.font='12px -apple-system,BlinkMacSystemFont,"Yu Gothic",sans-serif';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=margin.top+plotH*i/5,val=yMax-(yMax-yMin)*i/5;
+    ctx.strokeStyle='#e5edf2';ctx.beginPath();ctx.moveTo(margin.left,y);ctx.lineTo(margin.left+plotW,y);ctx.stroke();
+    ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillStyle='#5d788b';ctx.fillText(val.toFixed(yMax-yMin<=10?1:0),margin.left-12,y);
+  }
+  for(let i=0;i<=6;i++){
+    const x=margin.left+plotW*i/6,val=xMin+windowS*i/6;
+    ctx.strokeStyle='#e8eef2';ctx.beginPath();ctx.moveTo(x,margin.top);ctx.lineTo(x,margin.top+plotH);ctx.stroke();
+    ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#617889';ctx.fillText(val.toFixed(0),x,margin.top+plotH+9);
+  }
+  ctx.strokeStyle='#9db1bd';ctx.beginPath();ctx.moveTo(margin.left,margin.top);ctx.lineTo(margin.left,margin.top+plotH);ctx.lineTo(margin.left+plotW,margin.top+plotH);ctx.stroke();
+  ctx.textAlign='center';ctx.fillStyle='#526f80';ctx.fillText('PC受信経過時間 (s)',margin.left+plotW/2,h-12);
+  ctx.save();ctx.translate(15,margin.top+plotH/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('Force (N)',0,0);ctx.restore();
+  if(!visible.length){
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#9babba';ctx.font='14px sans-serif';
+    ctx.fillText('計測開始後、ここに張力波形を表示します',margin.left+plotW/2,margin.top+plotH/2);return;
+  }
+  ctx.save();ctx.beginPath();ctx.rect(margin.left,margin.top,plotW,plotH);ctx.clip();
+  ctx.beginPath();ctx.strokeStyle='#137f88';ctx.lineWidth=2.2;
+  visible.forEach((p,i)=>{const x=xp(p.pc_elapsed_s),y=yp(p.force_N);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+  ctx.stroke();
+  if(visible.length===1){ctx.beginPath();ctx.arc(xp(visible[0].pc_elapsed_s),yp(visible[0].force_N),3,0,Math.PI*2);ctx.fillStyle='#137f88';ctx.fill();}
+  ctx.restore();
+}
+function escapeCsvCell(value) {
+  const s=String(value??'');return /[",\r\n]/.test(s)?'"'+s.replaceAll('"','""')+'"':s;
+}
+function downloadCSV() {
+  if(!app.rows.length){message('保存できる測定データがありません。','error');return;}
+  const header=['sample_index','pc_receive_utc_iso8601','pc_elapsed_s','nominal_elapsed_s',
+    'force_N','source','transport','sensor_name','requested_period_ms',
+    'smoothed_force_N','force_trend_N_per_s','breath_state','inhale_when_force',
+    'sensitivity','hold_threshold_s','video_time_s','coach_cues','coach_ok'];
+  const lines=[header.join(',')];
+  for(const r of app.rows){
+    lines.push([r.index,r.utc_received,r.pc_elapsed_s.toFixed(6),r.nominal_elapsed_s.toFixed(6),r.force_N,
+      app.sessionMode==='DEMO'?'DEMO':'GDX_RB',app.sessionMode,app.deviceName,app.periodMs,
+      r.smooth_N.toFixed(6),r.slope_N_per_s===null?'':r.slope_N_per_s.toFixed(6),
+      r.breath_state,r.inhale_when_force,r.sensitivity,r.hold_threshold_s,r.video_time_s,r.coach_cues,r.coach_ok].map(escapeCsvCell).join(','));
+  }
+  const blob=new Blob(['\ufeff',lines.join('\r\n'),'\r\n'],{type:'text/csv;charset=utf-8'});
+  const uri=URL.createObjectURL(blob), link=document.createElement('a');
+  link.href=uri;link.download=app.sessionName+'.csv';document.body.appendChild(link);
+  link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(uri),60000);
+  app.exportedRows=app.rows.length;
+  message(`CSVのダウンロードを開始しました（${app.rows.length}点）。保存先はChromeのダウンロード設定に従います。`);
+}
+function stopDemoTimer(){if(app.demoTimer!==null){clearInterval(app.demoTimer);app.demoTimer=null;}}
+function startDemoTimer(){
+  stopDemoTimer();
+  const period=app.periodMs;
+  app.demoTimer=setInterval(()=>{
+    const t=(performance.now()-app.startPerfMs)/1000;
+    // Periodically freeze synthetic force to demonstrate the hold-candidate label.
+    const cycle=t%16;
+    const p=Math.min(cycle,8)*2*Math.PI*.22;
+    const v=18+4.5*Math.sin(p-.6)+(cycle<8?.12*Math.sin(3*p):0);
+    addMeasurement(v);
+  },period);
+}
+function startDemo(){
+  if(app.running||app.busy||app.device||!checkPriorData())return;
+  app.transport='DEMO';
+  prepareNewSession('DEMO','Synthetic respiration / demo only');
+  status('デモ計測中（実センサ未接続）','warn');
+  message('模擬波形です。約8秒後から張力変化が小さくなる区間を設けています。実測データとは混在させないでください。');
+  startDemoTimer();
+}
+async function stopAcquisition(){
+  if(!app.running||app.busy)return;
+  app.running=false;app.busy=true;updateButtons();updatePhase('PAUSED');
+  if('speechSynthesis' in window)try{window.speechSynthesis.cancel();}catch(_){}
+  stopDemoTimer();
+  // Called synchronously in the click handler, maintaining browser user activation.
+  if(el('autoSave').checked&&app.rows.length>app.exportedRows)downloadCSV();
+  let stopError=null;
+  if(app.device&&app.deviceStreaming){
+    try{
+      if(typeof app.device.stop==='function'){
+        await app.device.stop();app.deviceStreaming=false;
+      } else {
+        // Leave BLE link connected. Ignore values while paused if library has no stop method.
+        stopError='このライブラリではstop()が使用できないため、表示とCSVへの記録だけを停止しています。';
+      }
+    }catch(e){stopError='デバイス側の停止が確認できません: '+String(e&&e.message||e);}
+  }
+  app.busy=false;
+  status(app.device?'計測停止 · 接続維持':`デモ停止 · ${app.rows.length}点`,app.device?'warn':'');
+  message(stopError||`記録を停止しました（${app.rows.length}点）。${app.device?'再計測ボタンでセンサを再選択せずに開始できます。':'デモを再計測できます。'}`,stopError?'error':'info');
+  updateButtons();scheduleRender();
+}
+async function startActual(){
+  if(app.running||app.busy||app.device||!checkPriorData())return;
+  const useBle=el('connection').value==='ble';
+  if(!(useBle?navigator.bluetooth:navigator.hid)){
+    message(`このブラウザでは${useBle?'Web Bluetooth':'WebHID (USB)'}が利用できません。Google Chromeを使用してください。`,'error');return;
+  }
+  if(!window.isSecureContext){message('安全な接続コンテキストが必要です。ChromeでHTMLを直接開くかlocalhost/HTTPSを利用してください。','error');return;}
+  if(!window.godirect||typeof window.godirect.selectDevice!=='function'){
+    message('Vernier公式JavaScriptライブラリを読み込めません。インターネット接続を確認して再読み込みしてください。','error');return;
+  }
+  app.busy=true;updateButtons();status('デバイス選択中…','warn');
+  message('Chromeの選択画面でGDX-RBを選び、接続を許可してください。');
+  let dev=null;
+  try{
+    dev=await window.godirect.selectDevice(useBle);
+    const name=String(dev&&dev.name||'');
+    if(!/GDX-RB|RESPIRATION BELT/i.test(name))throw new Error(`「${name||'名称不明'}」はGDX-RBではありません。`);
+    const sensor=dev.getSensor(1);
+    if(!sensor||typeof sensor.setEnabled!=='function')throw new Error('Forceチャンネル1が見つかりません。');
+    app.device=dev;app.sensor=sensor;app.transport=useBle?'BLE':'USB';
+    app.intentionalClose=false;app.deviceStreaming=false;
+    sensor.setEnabled(true);
+    // Install the callback once per connection. Repeated starts never duplicate it.
+    sensor.on('value-changed',s=>{if(app.device===dev)addMeasurement(s.value);});
+    dev.on('device-closed',()=>{
+      if(app.device!==dev)return;
+      app.device=null;app.sensor=null;app.deviceStreaming=false;
+      app.running=false;stopDemoTimer();
+      if(!app.intentionalClose){
+        app.disconnectedUnexpectedly=true;
+        status(`予期せぬ切断 · ${app.rows.length}点`,'warn');
+        message('BLE/USB接続が切れました。取得済みのCSVを保存し、再接続してください。','error');
+      }
+      updatePhase('PAUSED');updateButtons();
+    });
+    prepareNewSession(app.transport,name);
+    await dev.start(app.periodMs);
+    if(app.device!==dev)throw new Error('測定開始中にセンサが切断されました。');
+    app.deviceStreaming=true;
+    status(`実測中 · ${name}`,'running');
+    message('計測中です。「計測停止・CSV保存」ではBLEリンクを維持します。再計測を押すと新しいCSVの計測を開始します。');
+  }catch(err){
+    app.running=false;
+    app.device=null;app.sensor=null;app.deviceStreaming=false;
+    if(dev){try{await dev.close();}catch(_e){}}
+    const detail=err&&err.message?err.message:String(err);
+    status('未接続','warn');
+    message(/NotFoundError|cancel|No device selected/i.test(detail)?'デバイス選択がキャンセルされました。':'GDX-RBへの接続に失敗しました: '+detail,'error');
+    updatePhase('NONE');
+  }finally{app.busy=false;updateButtons();scheduleRender();}
+}
+async function resumeTrial(){
+  if(app.running||app.busy||(!app.device&&app.transport!=='DEMO')||!checkPriorData())return;
+  app.busy=true;updateButtons();
+  const mode=app.device?app.transport:'DEMO';
+  const name=app.device?app.deviceName:'Synthetic respiration / demo only';
+  try{
+    if(app.device && !app.deviceStreaming){
+      // Start the device *before* replacing prior rows. If start fails, previous data survives.
+      await app.device.start(Number(el('sampling').value));
+      if(!app.device)throw new Error('センサとの接続が失われました。');
+      app.deviceStreaming=true;
+    }
+    prepareNewSession(mode,name);
+    if(app.device){
+      status(`再計測中 · ${name}`,'running');
+      message('接続を維持したまま新しい計測を開始しました。前回のデータはCSVとして別ファイルに保存してください。');
+    }else{
+      status('デモ再計測中','warn');message('デモの新しい測定区間を開始しました。');startDemoTimer();
+    }
+  }catch(err){
+    app.running=false;
+    updatePhase('PAUSED');
+    status('再計測に失敗 · 接続状態を確認','warn');
+    message('再計測を開始できませんでした: '+String(err&&err.message||err)+'。前回の記録は保持しています。「CSVを保存」を使用できます。','error');
+  }finally{app.busy=false;updateButtons();scheduleRender();}
+}
+async function disconnectDevice(){
+  if(app.running||app.busy)return;
+  if(!app.device){app.transport=null;status('未接続');message('デモを終了しました。');updatePhase('NONE');updateButtons();return;}
+  app.busy=true;updateButtons();app.intentionalClose=true;
+  const dev=app.device;
+  try{
+    await dev.close();
+    status('接続解除');message('GDX-RBを切断しました。次回はChromeでデバイスを選択してください。');
+  }catch(err){
+    message('切断処理でエラーが発生しました: '+String(err&&err.message||err),'error');
+  }finally{
+    app.device=null;app.sensor=null;app.deviceStreaming=false;
+    app.busy=false;app.transport=null;app.intentionalClose=false;
+    updatePhase('NONE');updateButtons();
+  }
+}
+function clearChart(){
+  if(app.running||app.busy||!app.rows.length||!checkPriorData())return;
+  app.rows=[];app.exportedRows=0;app.classifier.reset();
+  el('forceValue').textContent='—';el('elapsedValue').textContent='—';
+  el('countValue').textContent='0';el('observedRate').textContent='—';
+  updatePhase(app.device||app.transport==='DEMO'?'PAUSED':'NONE');
+  message('グラフをクリアしました。'+(app.device?'BLE/USB接続は維持しています。':''));
+  updateButtons();scheduleRender();
+}
+function resetPhaseOnSettingChange(){
+  app.classifier.reset();
+  if(window.GDXCoach)GDXCoach.onSettingsChange(); // v1.2 coaching
+  if(app.running){updatePhase('WARMUP');message('呼吸判定設定を変更しました。判定を約1秒間再初期化します。Force生データは変更しません。');}
+}
+function watchdog(){
+  if(!app.running||app.transport==='DEMO')return;
+  const t=performance.now();
+  const stalled=app.lastSamplePerfMs!==null&&t-app.lastSamplePerfMs>Math.max(3000,app.periodMs*8);
+  if(stalled)updatePhase('NO_SIGNAL');
+}
+function libraryReadyState(ok){
+  if(!ok)message('Vernier公式ライブラリを読み込めません。実測にはインターネット接続が必要です。デモは利用可能です。');
+}
+el('connectBtn').addEventListener('click',startActual);
+el('demoBtn').addEventListener('click',startDemo);
+el('stopBtn').addEventListener('click',stopAcquisition);
+el('resumeBtn').addEventListener('click',resumeTrial);
+el('disconnectBtn').addEventListener('click',disconnectDevice);
+el('csvBtn').addEventListener('click',downloadCSV);
+el('clearBtn').addEventListener('click',clearChart);
+el('viewWindow').addEventListener('change',scheduleRender);
+el('yAxis').addEventListener('change',scheduleRender);
+for(const id of ['polarity','sensitivity','holdSeconds'])el(id).addEventListener('change',resetPhaseOnSettingChange);
+el('vernierLibrary').addEventListener('load',()=>libraryReadyState(true));
+el('vernierLibrary').addEventListener('error',()=>libraryReadyState(false));
+if(typeof ResizeObserver!=='undefined')new ResizeObserver(scheduleRender).observe(chart);
+window.addEventListener('resize',scheduleRender);
+window.addEventListener('beforeunload',e=>{
+  if(app.rows.length>app.exportedRows){e.preventDefault();e.returnValue='';}
+});
+setInterval(watchdog,600);
+updatePhase('NONE');updateButtons();scheduleRender();
+
+  </script>
+  <script id="coach-core">
+/*
+ * GDX-RB coaching core: breathing-cue extraction from subtitles and
+ * per-sample judgement against BreathClassifier output.
+ * Cue rules mirror gdx_rb_coach/breath_core.py (checked by tests/test_coach_core.cjs).
+ * Judgements are heuristic feedback on belt tension, NOT clinical assessments.
+ * No external dependencies. Embedded verbatim inside GDX_RB_Coach_Live.html.
+ */
+(function (root) {
+  'use strict';
+  // kind: [label, channel, max duration s]
+  //   phase: breathing-phase instruction / tension: abdominal tension / constraint: e.g. "do not hold"
+  const CUE_KINDS = Object.freeze({
+    NO_HOLD: ['息を止めない', 'constraint', 20],
+    HOLD:    ['息を止める',   'phase',       8],
+    INHALE:  ['吸いながら',   'phase',       6],
+    EXHALE:  ['吐きながら',   'phase',       6],
+    BRACE:   ['お腹を固める', 'tension',    10],
+    RELAX:   ['力を抜く',     'tension',     6]
+  });
+  // Earlier rules win at the same position, so "息を止めない" is never read as "息を止め".
+  const CUE_RULES = [
+    ['NO_HOLD', "(息|呼吸)[をは]?(止め|とめ|こらえ|詰め)(ない|ず|ないで)|呼吸を?続け|(don'?t|do not|never) hold (your )?breath|keep breathing"],
+    ['HOLD',    '(息|呼吸)[をは]?(止め|とめ)(て|る|たまま|ます)|息を?こらえ|hold (your )?breath'],
+    ['INHALE',  '吸いながら|(息を?)?吸(って|う|い込|います)|breathe in|inhal'],
+    ['EXHALE',  '吐きながら|(息を?)?吐(いて|く|き切|きます)|breathe out|exhal'],
+    ['BRACE',   'お腹に力|腹圧|お腹を?(固め|締め|膨らま|張)|腹筋に力|ブレーシング|brac'],
+    ['RELAX',   '力を?抜|リラックス|脱力|緩め|ゆるめ|relax']
+  ].map(([kind, src]) => [kind, new RegExp(src, 'giu')]);
+
+  const REACTION_S = 0.8;   // no judgement right after a cue appears
+  const TARGET_BAND = Object.freeze({INHALE:[0.6, 1.3], EXHALE:[-0.3, 0.4], BRACE:[0.6, 1.6], RELAX:[-0.3, 0.35]});
+
+  const round2 = v => Math.round(v * 100) / 100;
+
+  function findPhrases(text) {
+    const hits = [];
+    CUE_RULES.forEach(([kind, re], prio) => {
+      re.lastIndex = 0;
+      for (const m of text.matchAll(re)) hits.push({start:m.index, prio, end:m.index + m[0].length, kind, s:m[0]});
+    });
+    hits.sort((a, b) => a.start - b.start || a.prio - b.prio || a.end - b.end);
+    const out = [];
+    let lastEnd = -1;
+    for (const h of hits) {
+      if (h.start < lastEnd) continue;
+      out.push({pos:h.start, kind:h.kind, text:h.s});
+      lastEnd = h.end;
+    }
+    return out;
+  }
+
+  function finalizeCues(cues, mergeS = 2.0) {
+    const sorted = cues.slice().sort((a, b) => a.t - b.t);
+    const merged = [];
+    for (const c of sorted) {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.kind === c.kind && c.t - prev.t < mergeS) continue;
+      merged.push({...c});
+    }
+    merged.forEach((c, i) => {
+      let end = c.t + CUE_KINDS[c.kind][2];
+      for (const n of merged.slice(i + 1)) {
+        // "息を止めて" lifts an active "息を止めない" constraint.
+        if (CUE_KINDS[n.kind][1] === CUE_KINDS[c.kind][1] || (c.kind === 'NO_HOLD' && n.kind === 'HOLD')) {
+          end = Math.min(end, n.t); break;
+        }
+      }
+      c.end = round2(end);
+    });
+    return merged;
+  }
+
+  // SRT / WebVTT -> [{start, end, text}]
+  function parseSubtitles(src) {
+    const ts = '(\\d+):(\\d+):(\\d+)[,.](\\d+)';
+    const re = new RegExp(ts + '\\s*-->\\s*' + ts);
+    const sec = (h, m, s, ms) => Number(h) * 3600 + Number(m) * 60 + Number(s) + Number(ms) / 10 ** ms.length;
+    const out = [];
+    for (const block of src.replace(/^﻿/, '').replace(/\r\n?/g, '\n').split(/\n\s*\n/)) {
+      const m = re.exec(block);
+      if (!m) continue;
+      const body = block.slice(m.index + m[0].length).trim().replace(/<[^>]+>/g, '').replace(/\n/g, ' ');
+      out.push({start:sec(...m.slice(1, 5)), end:sec(...m.slice(5, 9)), text:body});
+    }
+    return out;
+  }
+
+  function extractCues(segments, lead = 0) {
+    const cues = [];
+    for (const seg of segments) {
+      for (const p of findPhrases(seg.text)) {
+        // Position inside the line -> time, by linear interpolation.
+        const t = seg.start + p.pos / Math.max(seg.text.length, 1) * (seg.end - seg.start);
+        cues.push({t:round2(Math.max(0, t - lead)), kind:p.kind, text:p.text, end:0, context:seg.text});
+      }
+    }
+    return finalizeCues(cues);
+  }
+
+  // cue_extractor.py JSON, or raw SRT/VTT text
+  function loadCues(text) {
+    const trimmed = text.replace(/^﻿/, '').trim();
+    if (trimmed.startsWith('{')) {
+      const cues = JSON.parse(trimmed).cues;
+      if (!Array.isArray(cues)) throw new Error('cues 配列がありません');
+      return cues.filter(c => c.kind in CUE_KINDS && Number.isFinite(c.t) && Number.isFinite(c.end));
+    }
+    return extractCues(parseSubtitles(trimmed));
+  }
+
+  function activeCues(cues, t) {
+    const byChannel = {};
+    for (const c of cues) if (c.t <= t && t < c.end) byChannel[CUE_KINDS[c.kind][1]] = c;
+    return Object.values(byChannel);
+  }
+
+  // Tension normalised to quiet breathing: 0 = end of quiet exhale (p10), 1 = end of quiet inhale (p90).
+  function makeBaseline(values) {
+    if (values.length < 20) return null;
+    const s = values.slice().sort((a, b) => a - b);
+    const q = p => s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))];
+    const lo = q(0.10), hi = q(0.90);
+    return hi - lo > 0.05 ? {lo, hi} : null;
+  }
+  const normalise = (baseline, value) => baseline ? (value - baseline.lo) / (baseline.hi - baseline.lo) : null;
+
+  // res: BreathClassifier.process() output. norm: normalised tension or null.
+  // Returns {ok: true|false|null, msg}; null means "not judged".
+  function evaluate(cue, tVideo, res, norm) {
+    const label = CUE_KINDS[cue.kind][0];
+    if (tVideo - cue.t < REACTION_S || !res || res.code === 'WARMUP') return {ok:null, msg:label};
+    const code = res.code;
+    const band = TARGET_BAND[cue.kind];
+    switch (cue.kind) {
+      case 'NO_HOLD':
+        return code === 'HOLD_CANDIDATE'
+          ? {ok:false, msg:'張力の変化が小さい状態が続いています（息止めの可能性）→ ゆっくり吐き続けましょう'}
+          : {ok:true, msg:'呼吸は続いています（推定）'};
+      case 'HOLD':
+        if (code === 'TRANSITION' || code === 'HOLD_CANDIDATE') return {ok:true, msg:'張力を保持できています'};
+        return {ok:false, msg:'張力をそのまま保ちましょう'};
+      case 'INHALE':
+        if (code === 'INHALE' || (norm !== null && norm >= band[0])) return {ok:true, msg:'吸えています（推定）'};
+        if (code === 'TRANSITION') return {ok:null, msg:'お腹を膨らませるように吸いましょう'};
+        return {ok:false, msg:'お腹を膨らませるように吸いましょう'};
+      case 'EXHALE':
+        if (code === 'EXHALE' || (norm !== null && norm <= band[1])) return {ok:true, msg:'吐けています（推定）'};
+        if (code === 'TRANSITION') return {ok:null, msg:'ゆっくり吐きましょう'};
+        return {ok:false, msg:'ゆっくり吐きましょう'};
+      case 'BRACE':
+        if (norm === null) return {ok:null, msg:'基準未取得のため腹圧を判定できません'};
+        return norm >= band[0] ? {ok:true, msg:'お腹周りの張力 OK'} : {ok:false, msg:'お腹周りをもう少し張りましょう'};
+      case 'RELAX':
+        if (norm === null) return {ok:null, msg:'基準未取得のため脱力を判定できません'};
+        return norm <= band[1] ? {ok:true, msg:'力が抜けています'} : {ok:false, msg:'お腹の力を抜きましょう'};
+    }
+    return {ok:null, msg:''};
+  }
+
+  const api = {CUE_KINDS, CUE_RULES, TARGET_BAND, REACTION_S, findPhrases, finalizeCues, parseSubtitles,
+               extractCues, loadCues, activeCues, makeBaseline, normalise, evaluate};
+  root.CoachCore = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script id="coach-ui">
+'use strict';
+/*
+ * Video-coaching panel. Loaded after app-main; uses its globals (app, el, settings).
+ * app.js calls GDXCoach.onSample / onNewTrial / onSettingsChange (hooks added by build_html.py).
+ */
+(function () {
+  const C = window.CoachCore;
+  const CUE_COLOR = {INHALE:'#2f86b5', EXHALE:'#3c9a6a', HOLD:'#b07a2a', NO_HOLD:'#137c80', BRACE:'#b5523b', RELAX:'#7c8f9b'};
+  const ROW = {constraint:0, tension:1, phase:2};
+  const ROW_LABEL = ['制約', '張力', '呼吸相'];
+  const BASELINE_S = 20, AUTO_BASELINE_S = 30, MIN_BASELINE_S = 10;
+  const coach = {
+    cues:[], source:'', mode:'manual', manualRunning:false, startPerf:0, pausedAt:0, offset:0,
+    player:null, playerReady:false, baseline:null, baselinePol:1, stats:new Map(), last:null
+  };
+  const timeline = el('coachTimeline');
+  const tctx = timeline.getContext('2d');
+
+  function info(text, severity='info') {
+    const e = el('coachInfo');
+    e.textContent = text || '';
+    e.className = text ? 'message active ' + severity : 'message';
+  }
+  function polarity() { return settings().polarity === 'decrease' ? -1 : 1; }
+
+  // ---- clock: YouTube player time when available, otherwise a manual stopwatch ----
+  function ytState() { try { return coach.player.getPlayerState(); } catch (_) { return -1; } }
+  function clockRunning() {
+    if (coach.mode === 'youtube') return coach.playerReady && ytState() === 1;
+    return coach.manualRunning;
+  }
+  function videoTime() {
+    if (coach.mode === 'youtube' && coach.playerReady) {
+      try { return coach.player.getCurrentTime() + coach.offset; } catch (_) { return coach.offset; }
+    }
+    return (coach.manualRunning ? (performance.now() - coach.startPerf) / 1000 : coach.pausedAt) + coach.offset;
+  }
+  function toggleClock() {
+    if (!coach.cues.length) return;
+    if (coach.mode === 'youtube' && coach.playerReady) {
+      if (ytState() === 1) coach.player.pauseVideo(); else { autoBaseline(); coach.player.playVideo(); }
+      return;
+    }
+    if (coach.manualRunning) {
+      coach.pausedAt = (performance.now() - coach.startPerf) / 1000;
+      coach.manualRunning = false;
+    } else {
+      autoBaseline();
+      coach.startPerf = performance.now() - coach.pausedAt * 1000;
+      coach.manualRunning = true;
+    }
+  }
+  function rewind() {
+    coach.pausedAt = 0; coach.startPerf = performance.now();
+    if (coach.mode === 'youtube' && coach.playerReady) coach.player.seekTo(0, true);
+  }
+
+  // ---- tension baseline from quiet breathing (smoothed force, in the inhale direction) ----
+  function computeBaseline(spanS) {
+    const rows = app.rows;
+    if (!rows.length) return null;
+    const lastT = rows[rows.length - 1].pc_elapsed_s;
+    const win = rows.filter(r => r.pc_elapsed_s >= lastT - spanS);
+    if (!win.length || lastT - win[0].pc_elapsed_s < MIN_BASELINE_S) return null;
+    const pol = polarity();
+    return C.makeBaseline(win.map(r => r.smooth_N * pol));
+  }
+  function setBaseline(b, how) {
+    coach.baseline = b; coach.baselinePol = polarity();
+    if (b) info(`基準を${how}しました（安静呼気 ${(b.lo * coach.baselinePol).toFixed(2)} N ／ 安静吸気 ${(b.hi * coach.baselinePol).toFixed(2)} N）。`);
+  }
+  function autoBaseline() {
+    if (coach.baseline) return;
+    const b = computeBaseline(AUTO_BASELINE_S);
+    if (b) setBaseline(b, '直近の安静呼吸から自動取得');
+    else info(`張力の基準が未取得です。「お腹を固める」「力を抜く」は判定しません（${MIN_BASELINE_S}秒以上の安静呼吸を計測してから開始するか「基準を取得」を押してください）。`, 'error');
+  }
+
+  // ---- hooks called from app.js ----
+  function onSample(r, result) {
+    r.video_time_s = ''; r.coach_cues = ''; r.coach_ok = '';
+    if (!coach.cues.length || !clockRunning()) return;
+    const tv = videoTime();
+    const active = C.activeCues(coach.cues, tv);
+    const norm = C.normalise(coach.baseline, result.smooth * coach.baselinePol);
+    const evals = active.map(c => ({cue:c, ...C.evaluate(c, tv, result, norm)}));
+    for (const e of evals) {
+      if (e.ok === null) continue;
+      const s = coach.stats.get(e.cue) || {ok:0, n:0};
+      s.ok += e.ok ? 1 : 0; s.n += 1;
+      coach.stats.set(e.cue, s);
+    }
+    const judged = evals.filter(e => e.ok !== null);
+    r.video_time_s = tv.toFixed(3);
+    r.coach_cues = active.map(c => c.kind).join('+');
+    r.coach_ok = judged.length ? (judged.every(e => e.ok) ? 1 : 0) : '';
+    coach.last = {perf:performance.now(), evals, norm};
+    el('coachCsvBtn').disabled = false;
+  }
+  function onNewTrial() { coach.stats = new Map(); coach.last = null; renderTable(); }
+  function onSettingsChange() {
+    if (coach.baseline && polarity() !== coach.baselinePol) {
+      coach.baseline = null;
+      info('吸気時の張力方向が変わったため、張力の基準をリセットしました。', 'error');
+    }
+  }
+
+  // ---- loading cues / YouTube ----
+  async function loadCueFile(file) {
+    try {
+      const cues = C.loadCues(await file.text());
+      if (!cues.length) { info('キーフレーズが見つかりませんでした（「吸いながら」「吐きながら」「息を止めない」など）。', 'error'); return; }
+      coach.cues = cues; coach.source = file.name; coach.stats = new Map();
+      rewind();
+      el('coachStartBtn').disabled = false;
+      info(`${file.name} から ${cues.length} 件のキューを読み込みました。`);
+      renderTable();
+    } catch (err) {
+      info('キューを読み込めません: ' + String(err && err.message || err), 'error');
+    }
+  }
+  function youtubeId(url) {
+    const m = /(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/.exec(url);
+    return m ? m[1] : (/^[\w-]{11}$/.test(url) ? url : null);
+  }
+  function loadYouTubeApi() {
+    if (window.YT && window.YT.Player) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => { if (prev) prev(); resolve(); };
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      s.onerror = () => reject(new Error('YouTube IFrame API を読み込めません'));
+      document.head.appendChild(s);
+      setTimeout(() => reject(new Error('YouTube IFrame API の読み込みがタイムアウトしました')), 10000);
+    });
+  }
+  async function loadYouTube() {
+    const id = youtubeId(el('ytUrl').value.trim());
+    if (!id) { info('YouTube の URL を確認してください。', 'error'); return; }
+    try {
+      await loadYouTubeApi();
+      el('ytPlayerWrap').hidden = false;
+      if (coach.player) { coach.player.cueVideoById(id); coach.mode = 'youtube'; return; }
+      coach.player = new YT.Player('ytPlayer', {
+        videoId:id, playerVars:{playsinline:1, rel:0},
+        events:{
+          onReady:() => { coach.playerReady = true; coach.mode = 'youtube'; coach.manualRunning = false;
+                          info('YouTube と同期します。動画を再生するとコーチングが進みます。'); },
+          onStateChange:e => { if (e.data === 1) autoBaseline(); },
+          onError:e => {
+            coach.mode = 'manual'; coach.playerReady = false;
+            info(`動画を埋め込み再生できません（エラー ${e.data}）。HTMLを直接開いている場合は localhost から開くか、別タブで動画を再生して「コーチング開始」で手動同期してください。`, 'error');
+          }
+        }
+      });
+    } catch (err) {
+      coach.mode = 'manual';
+      info(String(err.message || err) + '。手動同期（コーチング開始ボタン）を使用してください。', 'error');
+    }
+  }
+
+  // ---- rendering ----
+  function renderCard(tv, running) {
+    const active = C.activeCues(coach.cues, tv);
+    const fresh = coach.last && performance.now() - coach.last.perf < 1500 ? coach.last : null;
+    el('coachCue').textContent = active.length ? active.map(c => C.CUE_KINDS[c.kind][0]).join(' ＋ ') : (coach.cues.length ? '（指示なし）' : '—');
+    el('coachCue').style.color = active.length ? CUE_COLOR[active[active.length - 1].kind] : '';
+    let msg = '', state = 'idle';
+    if (!coach.cues.length) msg = 'キューファイルを読み込んでください';
+    else if (!running) msg = coach.mode === 'youtube' ? '動画を再生すると開始します' : '「コーチング開始」を動画の再生と同時に押してください';
+    else if (!app.running) msg = 'センサ計測中ではないため判定していません';
+    else if (fresh) {
+      const bad = fresh.evals.filter(e => e.ok === false);
+      const ok = fresh.evals.filter(e => e.ok === true);
+      msg = bad.length ? bad[0].msg : fresh.evals.map(e => e.msg).join(' ／ ');
+      state = bad.length ? 'ng' : ok.length ? 'ok' : 'idle';
+    }
+    el('coachMsg').textContent = msg;
+    el('coachCard').className = 'coach-card ' + state;
+
+    // gauge: normalised tension, -0.4 .. 1.6
+    const pct = v => Math.min(100, Math.max(0, (v + 0.4) / 2 * 100));
+    const bandCue = active.slice().reverse().find(c => C.TARGET_BAND[c.kind]);
+    if (bandCue) {
+      const [lo, hi] = C.TARGET_BAND[bandCue.kind];
+      Object.assign(el('gaugeBand').style, {display:'block', left:pct(lo) + '%', width:(pct(hi) - pct(lo)) + '%'});
+    } else el('gaugeBand').style.display = 'none';
+    const norm = fresh ? fresh.norm : null;
+    el('gaugeMarker').style.display = norm === null ? 'none' : 'block';
+    if (norm !== null) el('gaugeMarker').style.left = pct(norm) + '%';
+    el('gaugeText').textContent = coach.baseline ? (norm === null ? '—' : norm.toFixed(2)) : '基準未取得';
+  }
+  function renderTimeline(tv) {
+    const rect = timeline.getBoundingClientRect();
+    const w = Math.max(200, rect.width), h = Math.max(90, rect.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (timeline.width !== Math.round(w * dpr) || timeline.height !== Math.round(h * dpr)) {
+      timeline.width = Math.round(w * dpr); timeline.height = Math.round(h * dpr);
+    }
+    tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    tctx.clearRect(0, 0, w, h); tctx.fillStyle = '#fff'; tctx.fillRect(0, 0, w, h);
+    const left = 52, right = 10, top = 6, bottom = 22, rowH = (h - top - bottom) / 3;
+    const x0 = tv - 5, x1 = tv + 15, xp = x => left + (x - x0) / (x1 - x0) * (w - left - right);
+    tctx.font = '11px -apple-system,BlinkMacSystemFont,"Yu Gothic",sans-serif';
+    tctx.textBaseline = 'middle';
+    ROW_LABEL.forEach((lab, i) => {
+      const y = top + (2 - i) * rowH;
+      tctx.fillStyle = '#f5f9fb'; tctx.fillRect(left, y + 2, w - left - right, rowH - 4);
+      tctx.fillStyle = '#5d788b'; tctx.textAlign = 'right'; tctx.fillText(lab, left - 8, y + rowH / 2);
+    });
+    tctx.save(); tctx.beginPath(); tctx.rect(left, 0, w - left - right, h); tctx.clip();
+    for (const c of coach.cues) {
+      if (c.end < x0 || c.t > x1) continue;
+      const y = top + (2 - ROW[C.CUE_KINDS[c.kind][1]]) * rowH;
+      const bx = xp(c.t), bw = Math.max(2, xp(c.end) - bx);
+      tctx.fillStyle = CUE_COLOR[c.kind];
+      tctx.fillRect(bx, y + 3, bw, rowH - 6);
+      tctx.save(); tctx.beginPath(); tctx.rect(bx, y, bw - 2, rowH); tctx.clip();   // keep the label inside its bar
+      tctx.fillStyle = '#fff'; tctx.textAlign = 'left';
+      tctx.fillText(C.CUE_KINDS[c.kind][0], Math.max(bx, left) + 4, y + rowH / 2);
+      tctx.restore();
+    }
+    tctx.restore();
+    tctx.strokeStyle = '#17394d'; tctx.lineWidth = 2;
+    tctx.beginPath(); tctx.moveTo(xp(tv), top); tctx.lineTo(xp(tv), h - bottom); tctx.stroke();
+    tctx.fillStyle = '#617889'; tctx.textAlign = 'center'; tctx.textBaseline = 'top';
+    for (let s = Math.ceil(x0 / 5) * 5; s <= x1; s += 5) if (s >= 0) tctx.fillText(s + 's', xp(s), h - bottom + 5);
+  }
+  function renderTable() {
+    const rows = coach.cues.map(c => {
+      const s = coach.stats.get(c);
+      const pct = s && s.n ? (s.ok / s.n * 100).toFixed(0) + '%' : '—';
+      return `<tr><td>${c.t.toFixed(1)}–${c.end.toFixed(1)}</td><td style="color:${CUE_COLOR[c.kind]};font-weight:700">${C.CUE_KINDS[c.kind][0]}</td>` +
+             `<td>${escapeHtml(c.text)}</td><td class="num">${pct}</td></tr>`;
+    });
+    el('coachTable').innerHTML = '<tr><th>動画時刻 (s)</th><th>キュー</th><th>フレーズ</th><th>適合率</th></tr>' + rows.join('');
+  }
+  function escapeHtml(s) { return String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[ch])); }
+  function render() {
+    const running = clockRunning();
+    const tv = videoTime();
+    el('coachClockText').textContent = !coach.cues.length ? 'キュー未読込' :
+      `${running ? '同期中' : '停止中'} · ${tv.toFixed(1)} s${coach.offset ? `（補正 ${coach.offset > 0 ? '+' : ''}${coach.offset.toFixed(1)} s）` : ''} · ${coach.mode === 'youtube' ? 'YouTube' : '手動'}`;
+    el('coachClock').className = 'status' + (running ? ' running' : coach.cues.length ? ' warn' : '');
+    el('coachStartBtn').textContent = running ? 'コーチング一時停止' : 'コーチング開始';
+    renderCard(tv, running);
+    renderTimeline(tv);
+  }
+  function downloadResults() {
+    const lines = [['cue_start_s', 'cue_end_s', 'kind', 'label', 'phrase', 'judged_samples', 'ok_samples', 'compliance', 'context'].join(',')];
+    for (const c of coach.cues) {
+      const s = coach.stats.get(c) || {ok:0, n:0};
+      lines.push([c.t, c.end, c.kind, C.CUE_KINDS[c.kind][0], c.text, s.n, s.ok, s.n ? (s.ok / s.n).toFixed(3) : '', c.context || '']
+        .map(escapeCsvCell).join(','));
+    }
+    const blob = new Blob(['﻿', lines.join('\r\n'), '\r\n'], {type:'text/csv;charset=utf-8'});
+    const uri = URL.createObjectURL(blob), link = document.createElement('a');
+    link.href = uri; link.download = (app.sessionName || 'GDX_RB_Coach') + '_coach.csv';
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(uri), 60000);
+  }
+
+  el('cueFile').addEventListener('change', e => { if (e.target.files[0]) loadCueFile(e.target.files[0]); });
+  el('ytLoadBtn').addEventListener('click', loadYouTube);
+  el('coachStartBtn').addEventListener('click', toggleClock);
+  el('coachBackBtn').addEventListener('click', () => { coach.offset -= 0.5; });
+  el('coachFwdBtn').addEventListener('click', () => { coach.offset += 0.5; });
+  el('coachRewindBtn').addEventListener('click', rewind);
+  el('baselineBtn').addEventListener('click', () => {
+    const b = computeBaseline(BASELINE_S);
+    if (b) setBaseline(b, `直近${BASELINE_S}秒から取得`);
+    else info(`基準を取得できません。${MIN_BASELINE_S}秒以上、安静呼吸の張力を計測してから押してください。`, 'error');
+  });
+  el('coachCsvBtn').addEventListener('click', downloadResults);
+  setInterval(render, 100);
+  setInterval(() => { if (clockRunning()) renderTable(); }, 1000);
+  window.GDXCoach = {onSample, onNewTrial, onSettingsChange, _state:coach};
+  render();
+})();
+
+  </script>
+</body>
+</html>
