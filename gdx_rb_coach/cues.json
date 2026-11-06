@@ -1,0 +1,40 @@
+{
+  "source": "https://www.youtube.com/watch?v=slspGIMcK2Q",
+  "cues": [
+    {
+      "t": 67.44,
+      "kind": "EXHALE",
+      "text": "吐きながら",
+      "end": 73.44,
+      "context": "置きますしっかり息を吐きながら"
+    },
+    {
+      "t": 111.47,
+      "kind": "INHALE",
+      "text": "吸いながら",
+      "end": 117.47,
+      "context": "息を吸いながら背中を反らせて斜め上を"
+    },
+    {
+      "t": 184.71,
+      "kind": "RELAX",
+      "text": "リラックス",
+      "end": 190.71,
+      "context": "リラックスした方が体も乗りやすくなるの"
+    },
+    {
+      "t": 187.97,
+      "kind": "NO_HOLD",
+      "text": "呼吸続け",
+      "end": 207.97,
+      "context": "で呼吸続けてくださいね"
+    },
+    {
+      "t": 306.1,
+      "kind": "BRACE",
+      "text": "お腹に力",
+      "end": 316.1,
+      "context": "ますお腹に力をしっかり入れながら両手は"
+    }
+  ]
+}
