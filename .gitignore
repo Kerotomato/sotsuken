@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ヨガ手本比較解析: 被験者の動画・データ・解析結果は公開リポジトリに push しない
+data/
+results/
+analysis/models/
+*.mov
+*.MOV

@@ -1,0 +1,9 @@
+numpy
+pandas
+scipy
+matplotlib
+opencv-python
+mediapipe               # 姿勢推定（Tasks API の PoseLandmarker を使う）
+yt-dlp                  # 手本動画のダウンロード
+youtube-transcript-api  # 手本動画の字幕
+faster-whisper          # 字幕がない／不正確なときの文字起こし（任意）
