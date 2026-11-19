@@ -59,3 +59,29 @@ py -X utf8 .\analysis\s1_reference.py
 - `results/reference/` に呼吸キュー（`cues.json`）、文字起こし（`transcript.csv`）、関節角度（`reference_angles.csv`）、確認用グラフ（`reference_overview.png`）を出力する
 - 字幕のキュー抽出がうまくいかないときは `--whisper small` を付けて、音声から文字起こしする
 
+### 段階2: 被験者動画の解析
+```
+py -X utf8 .\analysis\s2_subject_pose.py --subject 1 --condition 音声あり
+```
+- 動画の作成日時（録画開始時刻）を ffprobe で読み、`results/<被験者>/<条件>/video_info.json` に保存する
+- 手本と同じ定義の関節角度を `subject_angles.csv` に出力する
+- 段階3で使う音声を `data/<被験者>/<条件>/video_audio.wav` に取り出す
+
+### 段階3: 時刻合わせ
+```
+py -X utf8 .\analysis\s3_sync.py --subject 1 --condition 音声あり
+```
+- 全センサーを JST の絶対時刻にそろえ、手本動画（YouTube）の再生時刻と対応づける
+- 結果は `results/<被験者>/<条件>/` に出力する
+  - `sync.json`: 各センサーの開始時刻、方法、推定したずれ、確認の結果
+  - `sync_overview.png`: 全センサーを同じ時間軸に並べた確認用グラフ
+  - `sync_belt_hold.png`: 息止め付近の拡大
+  - `sync_audio.png`: 音声のずれ（音声ありのみ）
+- 呼吸ベルトの開始時刻は、計測冒頭の息止めの終わりを MCap の胸の動きと合わせて推定する
+- 動画の開始時刻は、IMU との照合（右手首の動き）で補正する。補正量は `sync.json` の `video.start_correction` に記録される
+
+結果を OneDrive にコピーする（コピー先の `results` フォルダがなくても作られる）
+```
+robocopy .\results "C:\Users\farms\OneDrive\学校\卒研\results" /E
+```
+
