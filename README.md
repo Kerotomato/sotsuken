@@ -40,8 +40,13 @@ py -X utf8 .\cue_extractor.py --url "https://www.youtube.com/watch?v=slspGIMcK2Q
 手本動画（https://www.youtube.com/watch?v=Da2L6PfR8DY）と被験者のデータを比べて、呼吸と動きを評価する。
 被験者の動画・データ・解析結果（`data/`、`results/`）は `.gitignore` 済みで、リポジトリには入れない。
 
+※ この節のコマンドはすべて **リポジトリのルート**（`sotsuken\sotsuken`）で実行する。
+`gdx_rb_web` などのサブフォルダにいると `.\analysis\...` が見つからずエラーになる。
+
 準備（初回のみ。ffmpeg は音声の変換に使う）
 ```
+cd C:\Users\r04i10\sotsuken\sotsuken
+$env:PYTHONUTF8 = "1"
 py -m pip install -r .\analysis\requirements.txt
 winget install Gyan.FFmpeg
 ```
