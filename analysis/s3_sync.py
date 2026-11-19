@@ -8,7 +8,9 @@
 時刻の決め方（論文の手法の章用。詳細は sensors.py / sync.py のコメント）:
   IMU / RAWACC  各行の timestamp_iso8601（UTC）→ JST
   MCap          ヘッダーの Capture Start Time + Time (Seconds)
-  動画          mov の作成日時（ffprobe）+ 再生位置
+  動画          mov の作成日時（ffprobe）+ 再生位置。作成日時は秒単位なので、IMU（右手首の角速度）と
+                動画の右手首の速さの相互相関でずれを求め、r >= 0.5 なら開始時刻を補正する
+                （補正量は sync.json の video.start_correction に記録）
   呼吸ベルト    開始時刻の記録がないため、計測冒頭の約5秒の息止めを、ベルトの力(N) と
                 MCap の胸の前後径（STRN–T10 距離）の両方で検出し、「息止めの終わり
                 （呼吸の再開）」が同時刻になるようにベルトの開始時刻を決める。
@@ -48,6 +50,8 @@ POSTURE_VEL = 10.0       # 体幹の傾きがこれ以上の速さ [deg/s] の�
                          # 呼吸の相互相関から除く（胸の前後径が姿勢で 30 mm 近く変わるため）
 CLOCK_TOL_S = 1.0        # 機器間の時計のずれの許容値（動画の作成日時が秒単位のため）
 CLOCK_SEARCH_S = 5.0     # 時計の確認で探す範囲 ±5 秒
+VIDEO_CORR_MIN_R = 0.5   # 動画の開始時刻を IMU に合わせて補正するのに必要な相関。0.3（XCORR_MIN_R）では
+                         # 呼吸のような周期的な信号で偽のピークを拾うことがあるため、補正には厳しめの値を使う
 MOTION_HZ = 5.0          # 動きの対応づけのサンプリング（姿勢の変化は 1 Hz 程度より遅い）
 DTW_BAND_S = 5.0         # DTW で許す局所的なずれ ±5 秒（初心者の動き出しの遅れを想定）
 MOTION_COLS = ["trunk_incl", "hip", "knee", "shoulder", "elbow"]   # 左右は平均（向きによる左右の入れ替わりを避ける）
@@ -368,6 +372,23 @@ def main():
     report["clock_checks"] = chk
     for k, v in chk.items():
         print(f"時計確認  {k}: {v['offset_s']:+.2f} s (r={v['r']:.2f}) [{v['status']}]")
+
+    # --- 動画の開始時刻を IMU の時計に合わせて補正する
+    # 作成日時は秒単位なので最大 1 秒ずれる。右手首の動きの相互相関が十分高いときだけ補正する
+    vc = {"start_from_metadata_jst": J(video_start), "correction_s": 0.0, "applied": False}
+    v = chk.get("video_vs_imu")
+    if v is None:
+        vc["reason"] = "被験者動画の姿勢推定がないため補正していない"
+    elif v["r"] < VIDEO_CORR_MIN_R:
+        vc["reason"] = f"相関 r={v['r']:.2f} が {VIDEO_CORR_MIN_R} 未満のため補正していない"
+    else:
+        video_start += v["offset_s"]
+        vc.update(correction_s=round(v["offset_s"], 3), applied=True, r=round(v["r"], 3),
+                  reason="IMU（右手首の角速度）と動画（右手首の速さ）の相互相関"
+                  + ("" if abs(v["offset_s"]) <= CLOCK_TOL_S else "。補正量が 1 秒を超えており要確認"))
+    vc["start_used_jst"] = J(video_start)
+    report["video"]["start_correction"] = vc
+    print(f"動画補正  {vc['correction_s']:+.2f} s → 開始 {vc['start_used_jst']}（{vc['reason']}）")
 
     # --- 手本動画との対応
     ref_dir = RESULTS_DIR / "reference"

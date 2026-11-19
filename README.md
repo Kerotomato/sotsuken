@@ -73,4 +73,10 @@ py -X utf8 .\analysis\s3_sync.py --subject 1 --condition 音声あり
   - `sync_belt_hold.png`: 息止め付近の拡大
   - `sync_audio.png`: 音声のずれ（音声ありのみ）
 - 呼吸ベルトの開始時刻は、計測冒頭の息止めの終わりを MCap の胸の動きと合わせて推定する
+- 動画の開始時刻は、IMU との照合（右手首の動き）で補正する。補正量は `sync.json` の `video.start_correction` に記録される
+
+結果を OneDrive にコピーする（コピー先の `results` フォルダがなくても作られる）
+```
+robocopy .\results "C:\Users\farms\OneDrive\学校\卒研\results" /E
+```
 
