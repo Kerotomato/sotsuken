@@ -10,6 +10,10 @@
   knee_L / knee_R   膝関節角 = 股関節–膝–足首 の角（180 = 伸展）
   shoulder_L / _R   肩の挙上角 = 股関節–肩–肘 の角（0 = 腕を下ろす、180 = 真上に挙げる）
   elbow_L / elbow_R 肘関節角 = 肩–肘–手首 の角（180 = 伸展）
+  forearm_incl_R    右前腕（肘→手首）と鉛直下向きのなす角（画像座標。0 = 真下、90 = 水平、180 = 真上）
+                    右手首の IMU（Apple Watch）の傾きと比べるために使う
+  r_wrist_speed     右手首の速さ（画像座標、肩幅/秒。肩幅で割ってカメラとの距離の影響を除く）
+                    IMU・MCap と動画の時刻が合っているかの確認に使う
   vis_mean          使用した関節点の visibility の平均（検出の信頼度の目安）
   detected          その時刻に人物を検出できたか（0/1）
 
@@ -134,6 +138,18 @@ def compute_angles(ts, img_lm, world_lm) -> pd.DataFrame:
         ok = np.minimum.reduce([vis[:, ia], vis[:, ib], vis[:, ic]]) >= VIS_MIN
         df[name] = np.where(ok, ang, np.nan)
         used |= {ia, ib, ic}
+    # 右前腕の傾き（画像座標、y 軸は下向き）
+    el, wr = img_lm[:, LM["elbow_R"], :2], img_lm[:, LM["wrist_R"], :2]
+    fa = wr - el
+    fa_ok = np.minimum(vis[:, LM["elbow_R"]], vis[:, LM["wrist_R"]]) >= VIS_MIN
+    df["forearm_incl_R"] = np.where(fa_ok, np.degrees(np.arctan2(np.abs(fa[:, 0]), fa[:, 1])), np.nan)
+    # 右手首の速さ（肩幅/秒）
+    sw = np.linalg.norm(img_lm[:, LM["shoulder_L"], :2] - img_lm[:, LM["shoulder_R"], :2], axis=1)
+    sw = np.nanmedian(sw) if np.isfinite(sw).any() else np.nan
+    wr_ok = np.where((vis[:, LM["wrist_R"]] >= VIS_MIN)[:, None], wr, np.nan)
+    with np.errstate(invalid="ignore"):
+        sp = np.linalg.norm(np.diff(wr_ok, axis=0), axis=1) / np.diff(ts) / sw
+    df["r_wrist_speed"] = np.r_[np.nan, sp]
     df["vis_mean"] = np.nanmean(vis[:, sorted(used)], axis=1)
     df["detected"] = (~np.isnan(img_lm[:, 0, 0])).astype(int)
     return df
